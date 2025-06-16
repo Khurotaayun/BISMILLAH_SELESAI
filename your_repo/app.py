@@ -17,14 +17,14 @@ st.set_page_config(page_title="Deteksi Drowsy Realtime", layout="centered")
 
 # Fungsi untuk mainkan suara alarm
 def mainkan_suara_drowsy():
-    threading.Thread(target=lambda: playsound("C:/Users/lenovvo/alarm-restricted-access-355278.mp3")).start()
+    threading.Thread(target=lambda: playsound("alarm-restricted-access-355278.mp3")).start()
 
 # Load model YOLOv5 custom
 @st.cache_resource
 def load_model():
     model = torch.hub.load(
         'ultralytics/yolov5', 'custom',
-        path=r"C:\Users\lenovvo\Downloads\your_repo\best.pt",
+        path="best.pt",
         force_reload=False,
         device='cpu'
     )
