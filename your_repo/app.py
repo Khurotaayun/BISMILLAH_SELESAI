@@ -5,23 +5,19 @@ import numpy as np
 import time
 import threading
 import os
+from playsound import playsound
 import platform
 
-# Deteksi apakah dijalankan secara lokal (bukan di server Cloud)
+# Deteksi apakah sedang berjalan secara lokal
 def is_running_local():
     return platform.system() in ["Windows", "Darwin", "Linux"]
 
-# Inisialisasi pygame hanya saat lokal
-if is_running_local():
-    import pygame
-    pygame.mixer.init()
-    def mainkan_suara_drowsy():
-        threading.Thread(target=lambda: pygame.mixer.Sound("alarm-restricted-access-355278.mp3").play()).start()
-else:
-    def mainkan_suara_drowsy():
-        pass  # Tidak melakukan apa-apa jika di cloud
+# Fungsi mainkan alarm hanya jika lokal
+def mainkan_suara_drowsy():
+    if is_running_local():
+        threading.Thread(target=lambda: playsound("alarm-restricted-access-355278.mp3")).start()
 
-# ⚠️ WAJIB: paling atas sebelum perintah Streamlit lain
+# ⚠️ WAJIB paling atas sebelum perintah Streamlit lain
 st.set_page_config(page_title="Deteksi Drowsy Realtime", layout="centered")
 
 # Load model YOLOv5 custom
