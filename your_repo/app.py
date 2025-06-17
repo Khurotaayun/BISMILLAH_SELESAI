@@ -1,7 +1,5 @@
 # app.py
 import pathlib
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
 from pathlib import Path
 
 import streamlit as st
@@ -39,7 +37,7 @@ model = load_model()
 
 model = torch.hub.load(
     'ultralytics/yolov5', 'custom',
-    path=str(Path("models/best.pt").resolve()),  # gunakan Path
+    path=str(Path("best.pt").resolve()),  # gunakan Path
     force_reload=False
 )
 
