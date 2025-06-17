@@ -1,7 +1,4 @@
 # app.py
-import pathlib
-from pathlib import Path
-
 import streamlit as st
 import cv2
 import torch
@@ -10,8 +7,6 @@ from PIL import Image
 import time
 import threading
 from playsound import playsound
-
-my_path = Path("folder/namafile.ext")  # Python otomatis memilih WindowsPath atau PosixPath
 
 
 # ⚠️ WAJIB: Harus di paling atas sebelum perintah Streamlit lainnya
@@ -26,7 +21,7 @@ def mainkan_suara_drowsy():
 def load_model():
     model = torch.hub.load(
         'ultralytics/yolov5', 'custom',
-        path=str(Path("best.pt").resolve()),
+        path="best.pt",
         force_reload=False,
         device='cpu'
     )
