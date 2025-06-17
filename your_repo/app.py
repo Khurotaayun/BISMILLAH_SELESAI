@@ -20,7 +20,7 @@ def load_model():
     model = torch.hub.load(
         'ultralytics/yolov5', 'custom',
         path="best.pt",
-        force_reload=False,
+        force_reload=True,
         device='cpu'
     )
     return model
