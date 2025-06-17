@@ -12,6 +12,9 @@ import time
 import threading
 from playsound import playsound
 
+my_path = Path("folder/namafile.ext")  # Python otomatis memilih WindowsPath atau PosixPath
+
+
 # ⚠️ WAJIB: Harus di paling atas sebelum perintah Streamlit lainnya
 st.set_page_config(page_title="Deteksi Drowsy Realtime", layout="centered")
 
@@ -24,13 +27,20 @@ def mainkan_suara_drowsy():
 def load_model():
     model = torch.hub.load(
         'ultralytics/yolov5', 'custom',
-        path="best.pt",
+        path=str(Path("best.pt").resolve()),
         force_reload=False,
         device='cpu'
     )
     return model
 
 model = load_model()
+
+
+model = torch.hub.load(
+    'ultralytics/yolov5', 'custom',
+    path=str(Path("models/best.pt").resolve()),  # gunakan Path
+    force_reload=False
+)
 
 # UI
 st.title("🚨 Deteksi Drowsy (Mengantuk) Realtime")
