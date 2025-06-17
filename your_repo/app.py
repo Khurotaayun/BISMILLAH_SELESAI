@@ -19,7 +19,7 @@ def mainkan_suara_drowsy():
 def load_model():
     model = torch.hub.load(
         'ultralytics/yolov5', 'custom',
-        path=r"best.pt",
+        path="best.pt",
         force_reload=False,
         device='cpu'
     )
