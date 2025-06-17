@@ -2,6 +2,7 @@
 import pathlib
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
+from pathlib import Path
 
 import streamlit as st
 import cv2
