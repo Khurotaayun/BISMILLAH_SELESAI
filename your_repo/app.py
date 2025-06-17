@@ -1,6 +1,16 @@
 import pathlib
 # temp = pathlib.PosixPath
 # pathlib.PosixPath = pathlib.WindowsPath
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path("yolov5")))  # pastikan folder yolov5 terdeteksi
+
+from models.common import DetectMultiBackend
+
+@st.cache_resource
+def load_model():
+    return DetectMultiBackend(weights="best.pt", device="cpu")  # file best.pt harus di-upload
 
 import streamlit as st
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
@@ -22,14 +32,13 @@ def mainkan_suara_drowsy():
 
 # Load model YOLOv5
 @st.cache_resource
+sys.path.append(str(Path("yolov5")))  # pastikan folder yolov5 terdeteksi
+
+from models.common import DetectMultiBackend
+
+@st.cache_resource
 def load_model():
-    model = torch.hub.load(
-        'ultralytics/yolov5', 'custom',
-        path='best.pt',  # Ganti dengan nama file model kamu yang sudah diunggah
-        force_reload=False,
-        device='cpu'
-    )
-    return model
+    return DetectMultiBackend(weights="best.pt", device="cpu")  # file best.pt harus di-upload
 
 model = load_model()
 
