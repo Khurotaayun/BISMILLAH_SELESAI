@@ -18,6 +18,7 @@ scipy==1.15.3
 pytesseract==0.3.10
 
 
+git+https://github.com/ultralytics/yolov5.git
 
 
 altair==5.5.0
