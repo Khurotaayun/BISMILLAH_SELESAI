@@ -1,77 +1,117 @@
+# app.py
+import pathlib
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
+
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 import streamlit as st
+import cv2
 import torch
 import numpy as np
-import av
-import cv2
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
-from pathlib import Path
+from PIL import Image
+import time
+import threading
+from playsound import playsound
 
-# Set halaman
+# ⚠️ WAJIB: Harus di paling atas sebelum perintah Streamlit lainnya
 st.set_page_config(page_title="Deteksi Drowsy Realtime", layout="centered")
-st.title("😴 Deteksi Drowsy (Ngantuk) Realtime")
 
-# Load model hanya sekali
+# Fungsi untuk mainkan suara alarm
+def mainkan_suara_drowsy():
+    threading.Thread(target=lambda: playsound("C:/Users/lenovvo/alarm-restricted-access-355278.mp3")).start()
+
+# Load model YOLOv5 custom
 @st.cache_resource
 def load_model():
-    return torch.load('ultralytics/yolov5', 'custom', path='best.pt', force_reload=False)
+    model = torch.hub.load(
+        'ultralytics/yolov5', 'custom',
+        path=r"C:\Users\lenovvo\Downloads\your_repo\best.pt",
+        force_reload=False,
+        device='cpu'
+    )
+    return model
 
 model = load_model()
 
-# State untuk kontrol alarm
-if "alarm_triggered" not in st.session_state:
-    st.session_state.alarm_triggered = False
+# UI
+st.title("🚨 Deteksi Drowsy (Mengantuk) Realtime")
+st.markdown("Klik tombol **Start Deteksi** untuk mengaktifkan kamera dan memulai deteksi mata mengantuk secara langsung.")
 
-# Tampilkan audio jika alarm aktif
-def show_alarm_audio():
-    audio_path = Path("alarm-restricted-access-355278.mp3")
-    if audio_path.exists():
-        audio_file = open(audio_path, "rb")
-        audio_bytes = audio_file.read()
-        st.audio(audio_bytes, format="audio/mp3")
-    else:
-        st.error("File alarm.mp3 tidak ditemukan!")
+# Simpan status di session_state
+if 'deteksi_aktif' not in st.session_state:
+    st.session_state.deteksi_aktif = False
 
-# Kelas pemrosesan video dari kamera
-class DrowsyProcessor(VideoProcessorBase):
-    def __init__(self) -> None:
-        self.drowsy_detected = False
+# Tombol kontrol kamera
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("▶️ Start Deteksi"):
+        st.session_state.deteksi_aktif = True
+with col2:
+    if st.button("⏹️ Stop"):
+        st.session_state.deteksi_aktif = False
 
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        resized = cv2.resize(img, (640, 640))
+# Tampilkan frame webcam
+FRAME_WINDOW = st.image([])
 
-        results = model(resized)
+# Parameter deteksi
+cooldown = 3
+last_sound_time = 0
+frame_drowsy_tidak_terdeteksi = 0
+drowsy_active = False
+CONFIDENCE_THRESHOLD = 0.3
 
-        # Reset alarm dulu
-        self.drowsy_detected = False
+# Jalankan deteksi jika tombol Start ditekan
+if st.session_state.deteksi_aktif:
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-        for det in results.xyxy[0]:
-            x1, y1, x2, y2, conf, cls = map(int, det[:6])
-            label = model.names[int(cls)]
+    st.success("📸 Kamera aktif. Deteksi berjalan...")
 
-            if label.lower() == "drowsy":
-                self.drowsy_detected = True
+    while st.session_state.deteksi_aktif:
+        ret, frame = cap.read()
+        if not ret:
+            st.error("❌ Tidak bisa membaca frame dari kamera.")
+            break
 
-            # Tampilkan bounding box
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-            cv2.putText(img, label, (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        results = model(frame)
+        df = results.pandas().xyxy[0]
+        frame_bgr = np.squeeze(results.ims[0])
 
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
+        current_time = time.time()
+        drowsy_detected = False
 
-# Jalankan Stream Webcam
-ctx = webrtc_streamer(
-    key="drowsy-detection",
-    video_processor_factory=DrowsyProcessor,
-    rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-)
+        for i, row in df.iterrows():
+            if row['confidence'] > CONFIDENCE_THRESHOLD:
+                x1, y1, x2, y2 = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
+                label = f"{row['name']} {row['confidence']:.2f}"
 
-# Tampilkan alarm jika terdeteksi
-if ctx.video_processor:
-    if ctx.video_processor.drowsy_detected and not st.session_state.alarm_triggered:
-        st.session_state.alarm_triggered = True
-        st.warning("⚠️ DROWSY TERDETEKSI!")
-        show_alarm_audio()
+                # Gambar bounding box
+                cv2.rectangle(frame_bgr, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    elif not ctx.video_processor.drowsy_detected:
-        st.session_state.alarm_triggered = False
+                # Tambahkan label
+                cv2.putText(frame_bgr, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6, (0, 255, 0), 2)
+
+                # Deteksi mengantuk
+                if row['name'] == 'drowsy':
+                    drowsy_detected = True
+
+        if drowsy_detected:
+            frame_drowsy_tidak_terdeteksi = 0
+            if not drowsy_active or (current_time - last_sound_time > cooldown):
+                mainkan_suara_drowsy()
+                last_sound_time = current_time
+                drowsy_active = True
+        else:
+            frame_drowsy_tidak_terdeteksi += 1
+            if frame_drowsy_tidak_terdeteksi >= 10:
+                drowsy_active = False
+
+        # Konversi ke RGB dan tampilkan
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        FRAME_WINDOW.image(frame_rgb)
+
+    cap.release()
+else:
+    st.info("Klik 'Start Deteksi' untuk memulai.")
