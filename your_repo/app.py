@@ -13,7 +13,7 @@ st.title("😴 Deteksi Drowsy (Ngantuk) Realtime")
 # Load model hanya sekali
 @st.cache_resource
 def load_model():
-    return torch.hub.load('ultralytics/yolov5', 'custom', path='best.pt', force_reload=False)
+    return torch.load('ultralytics/yolov5', 'custom', path='best.pt', force_reload=False)
 
 model = load_model()
 
