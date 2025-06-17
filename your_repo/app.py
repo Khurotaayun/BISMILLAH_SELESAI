@@ -1,52 +1,39 @@
-import pathlib
-# temp = pathlib.PosixPath
-# pathlib.PosixPath = pathlib.WindowsPath
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path("yolov5")))  # pastikan folder yolov5 terdeteksi
-
-from models.common import DetectMultiBackend
-
-@st.cache_resource
-def load_model():
-    return DetectMultiBackend(weights="best.pt", device="cpu")  # file best.pt harus di-upload
-
 import streamlit as st
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
-import torch
 import cv2
+import torch
 import numpy as np
 import av
-import threading
 import time
+import sys
+from pathlib import Path
 from PIL import Image
 
-# ⚠️ WAJIB
+# ⚠️ WAJIB: set layout sebelum elemen Streamlit lain
 st.set_page_config(page_title="Deteksi Drowsy Realtime", layout="centered")
 
-# Fungsi untuk mainkan suara alarm (server-side)
+# Pastikan YOLOv5 path terdeteksi
+sys.path.append(str(Path("yolov5")))  # Ini akan aktif karena YOLOv5 diinstal via pip dari GitHub
+
+from models.common import DetectMultiBackend  # dari yolov5
+
+# Fungsi load model
+@st.cache_resource
+def load_model():
+    return DetectMultiBackend(weights="best.pt", device="cpu")
+
+model = load_model()
+
+# Fungsi untuk mainkan alarm drowsy
 def mainkan_suara_drowsy():
     st.warning("⚠️ Drowsy terdeteksi! Aktifkan suara di browser.")
     st.audio("alarm-restricted-access-355278.mp3", autoplay=True)
-
-# Load model YOLOv5
-@st.cache_resource
-sys.path.append(str(Path("yolov5")))  # pastikan folder yolov5 terdeteksi
-
-from models.common import DetectMultiBackend
-
-@st.cache_resource
-def load_model():
-    return DetectMultiBackend(weights="best.pt", device="cpu")  # file best.pt harus di-upload
-
-model = load_model()
 
 # UI
 st.title("🚨 Deteksi Drowsy (Mengantuk) Realtime")
 st.markdown("Webcam akan diakses langsung dari browser kamu. Klik **Start** untuk memulai deteksi.")
 
-# Video processor untuk webrtc
+# Video processor
 class VideoProcessor(VideoProcessorBase):
     def __init__(self):
         self.last_sound_time = 0
@@ -57,7 +44,7 @@ class VideoProcessor(VideoProcessorBase):
 
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
-        results = model(img)
+        results = model(img, verbose=False)
         df = results.pandas().xyxy[0]
 
         drowsy_detected = False
@@ -70,7 +57,7 @@ class VideoProcessor(VideoProcessorBase):
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-                if row['name'] == 'drowsy':
+                if row['name'].lower() == 'drowsy':
                     drowsy_detected = True
 
         if drowsy_detected:
@@ -78,7 +65,6 @@ class VideoProcessor(VideoProcessorBase):
             if not self.drowsy_active or (current_time - self.last_sound_time > self.cooldown):
                 self.last_sound_time = current_time
                 self.drowsy_active = True
-                # Tidak bisa memainkan suara dari server, gunakan notifikasi + audio tag
                 mainkan_suara_drowsy()
         else:
             self.frame_drowsy_tidak_terdeteksi += 1
@@ -87,7 +73,7 @@ class VideoProcessor(VideoProcessorBase):
 
         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# Stream dari browser user
+# Start stream
 webrtc_streamer(
     key="drowsy-detection",
     video_processor_factory=VideoProcessor,
