@@ -1,40 +1,37 @@
-# app.py
 import streamlit as st
 import cv2
 import torch
 import numpy as np
-from PIL import Image
 import time
 import threading
-from playsound import playsound
+import os
+import pygame
 
+# Inisialisasi pygame mixer
+pygame.mixer.init()
 
-# ⚠️ WAJIB: Harus di paling atas sebelum perintah Streamlit lainnya
+# ⚠️ WAJIB paling atas sebelum perintah Streamlit lain
 st.set_page_config(page_title="Deteksi Drowsy Realtime", layout="centered")
+
+# Path file alarm
+alarm_path = os.path.join(os.path.dirname(__file__), "alarm-restricted-access-355278.mp3")
 
 # Fungsi untuk mainkan suara alarm
 def mainkan_suara_drowsy():
-    threading.Thread(target=lambda: playsound("alarm-restricted-access-355278.mp3")).start()
+    threading.Thread(target=lambda: pygame.mixer.Sound(alarm_path).play()).start()
 
 # Load model YOLOv5 custom
 @st.cache_resource
 def load_model():
     model = torch.hub.load(
         'ultralytics/yolov5', 'custom',
-        path="best.pt",
+        path='best.pt',
         force_reload=False,
         device='cpu'
     )
     return model
 
 model = load_model()
-
-
-model = torch.hub.load(
-    'ultralytics/yolov5', 'custom',
-    path=str(Path("best.pt").resolve()),  # gunakan Path
-    force_reload=False
-)
 
 # UI
 st.title("🚨 Deteksi Drowsy (Mengantuk) Realtime")
@@ -84,19 +81,15 @@ if st.session_state.deteksi_aktif:
         current_time = time.time()
         drowsy_detected = False
 
-        for i, row in df.iterrows():
+        for _, row in df.iterrows():
             if row['confidence'] > CONFIDENCE_THRESHOLD:
                 x1, y1, x2, y2 = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
                 label = f"{row['name']} {row['confidence']:.2f}"
 
-                # Gambar bounding box
                 cv2.rectangle(frame_bgr, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-                # Tambahkan label
                 cv2.putText(frame_bgr, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
                             0.6, (0, 255, 0), 2)
 
-                # Deteksi mengantuk
                 if row['name'] == 'drowsy':
                     drowsy_detected = True
 
@@ -111,7 +104,6 @@ if st.session_state.deteksi_aktif:
             if frame_drowsy_tidak_terdeteksi >= 10:
                 drowsy_active = False
 
-        # Konversi ke RGB dan tampilkan
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         FRAME_WINDOW.image(frame_rgb)
 
