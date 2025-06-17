@@ -16,11 +16,15 @@ def mainkan_suara_drowsy():
 
 # Load model YOLOv5 custom
 @st.cache_resource
-def load_model():
+ if hasattr(torch.classes, '__path__'):
+            torch.classes.__path__ = []
+    except Exception as e:
+        st.warning(f"Could not modify torch.classes.__path__: {e}")
+
     model = torch.hub.load(
         'ultralytics/yolov5', 'custom',
-        path="best.pt",
-        force_reload=True,
+        path="best.pt", # Changed to relative path
+        force_reload=False,
         device='cpu'
     )
     return model
