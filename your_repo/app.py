@@ -1,6 +1,6 @@
 import pathlib
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
+# temp = pathlib.PosixPath
+# pathlib.PosixPath = pathlib.WindowsPath
 
 import streamlit as st
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
